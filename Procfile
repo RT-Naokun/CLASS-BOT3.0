@@ -1,0 +1,1 @@
+app: python reset_schedule.py
