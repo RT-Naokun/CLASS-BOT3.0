@@ -7,27 +7,28 @@ from linebot.exceptions import (
     InvalidSignatureError
 )
 from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage
+    MessageEvent, TextMessage, TextSendMessage, TemplateSendMessage, ButtonsTemplate, MessageAction
 )
 import datetime
-from message import change_bright, check_tesuto_onoff, schedule, scope, kanji, brightstage, tesuto, file, event_c, information, feedback, change_file, change_time,change_event,change_kanji,change_tesuto,change_tesuto_onoff
+from message import(
+    check_tesuto_onoff, schedule, kanji, tesuto,
+    file, event_c, notice, feedback, change_file,change_notice, change_time,change_event,change_kanji,change_tesuto,change_tesuto_onoff,
+    reset_monday_schedule,reset_tuesday_schedule,reset_wednesday_schedule,reset_thursday_schedule,reset_friday_schedule
+)
+
 
 app = Flask(__name__)
 
 line_bot_api = LineBotApi('チャンネルアクセストークン')
-handler = WebhookHandler('シークレットキー')
-
+handler = WebhookHandler('シークレットトークン')
 
 @app.route("/callback", methods=['POST'])
 def callback():
-    # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
 
-    # get request body as text
     body = request.get_data(as_text=True)
     app.logger.info("Request body: " + body)
 
-    # handle webhook body
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
@@ -53,19 +54,63 @@ def handle_message(event):
     #入力メッセージ受け取り
     message = event.message.text
     if message == '時間割':
-        message_content = schedule(weekday, now_time)
+        message = schedule(weekday, now_time)
         line_bot_api.reply_message(
             event.reply_token,
-            messages=message_content
+            messages=message
         )
+
+    elif message == '月曜日':
+            line_bot_api.reply_message(
+            event.reply_token,
+            messages=schedule(0,6)
+        )
+    elif message == '火曜日':
+            line_bot_api.reply_message(
+            event.reply_token,
+            messages=schedule(1,6)
+        )
+    elif message == '水曜日':
+            line_bot_api.reply_message(
+            event.reply_token,
+            messages=schedule(2,6)
+        )
+    elif message == '木曜日':
+            line_bot_api.reply_message(
+            event.reply_token,
+            messages=schedule(3,6)
+        )
+    elif message == '金曜日':
+            line_bot_api.reply_message(
+            event.reply_token,
+            messages=schedule(4,6)
+        )
+    
+    elif message == '範囲表':
+        line_bot_api.reply_message(
+            event.reply_token,
+            messages = TemplateSendMessage(
+                alt_text = "範囲",
+                template = ButtonsTemplate(
+                    title = "何の範囲を確認しますか？",
+                    text = "定期テストの範囲表はテスト1週間前から利用可能です",            
+                    image_size = "cover",
+                    actions = [
+                        MessageAction(
+                        label = '漢字テスト',
+                        text = '漢字テスト'
+                        ),
+                        MessageAction(
+                        label = '定期テスト',
+                        text = '定期テスト'
+                        )
+                    ]
+                )
+            )
+        )
+
     elif message == '漢字テスト':
         message_content = kanji()
-        line_bot_api.reply_message(
-            event.reply_token,
-            messages=message_content
-        )
-    elif message == 'ブライトステージ':
-        message_content = brightstage()
         line_bot_api.reply_message(
             event.reply_token,
             messages=message_content
@@ -80,12 +125,7 @@ def handle_message(event):
             event.reply_token,
             messages=message_content
         )
-    elif message == '範囲表':
-        message_content = scope()
-        line_bot_api.reply_message(
-            event.reply_token,
-            messages=message_content
-        )
+
     elif message == '提出物':
         message_content = file()
         line_bot_api.reply_message(
@@ -98,29 +138,37 @@ def handle_message(event):
             event.reply_token,
              messages=message_content
         )
-    elif message == '使い方':
-        message_content = information()
+    elif message == 'お知らせ':
+        message_content = notice()
         line_bot_api.reply_message(
             event.reply_token,
             messages=message_content
         )
-    elif message == '質問・機能追加':
+    elif message == '問い合わせ':
         message_content = feedback()
         line_bot_api.reply_message(
             event.reply_token,
             messages=message_content
         )
+    #コマンド
     elif '@dev' in message:
         message_list = message.split(',')
         message_command = message_list[1]
         list_num = len(message_list)
         if message_command == '提出物':
             if list_num > 2:
-                change_file(message_command, list_num, message_list)
+                change_file(list_num, message_list)
                 message = '提出物を変更しました'
             else:
                 message = 'エラー:情報が不足しているか形式に誤りがあります'
-        #時間割--------
+
+        elif message_command == 'お知らせ':
+            if list_num > 2:
+                change_notice(list_num, message_list)
+                message = 'お知らせを変更しました'
+            else:
+                message = 'エラー:情報が不足しているか形式に誤りがあります'
+
         elif message_command == '時間割':
             if list_num == 4  :
                 change_time(message_list)
@@ -132,13 +180,6 @@ def handle_message(event):
             if list_num == 4:
                 change_kanji(message_list)
                 message = '漢字の範囲表を変更しました'
-            else:
-                message = 'エラー:情報が不足しているか形式に誤りがあります'
-
-        elif message_command == 'ブライトステージ':
-            if list_num == 4:
-                change_bright(message_list)
-                message = 'ブライトステージの範囲表を変更しました'
             else:
                 message = 'エラー:情報が不足しているか形式に誤りがあります'
 
@@ -161,37 +202,86 @@ def handle_message(event):
                 change_tesuto_onoff()
                 active = check_tesuto_onoff()
                 if active == '0':
-                    message='定期テストをモードOFFにしました'
+                    message='テスト期間をOFFにしました'
                 elif active == '1':
-                    message='定期テストをモードONにしました'
+                    message='テスト期間をONにしました'
             else:
                 message = 'エラー:情報が不足しているか形式に誤りがあります'
                 
         elif message_command == 'ヘルプ':
-            message = '''
-【ベース】
-　@dev,
-【コマンド】
-・時間割,曜日番号(1~5),時限:変更科目(-時限:変更科目)
-・提出物,曜日:内容・・・
-・漢字,画像ID(1024px),画像ID(240px)
-・ブライトステージ,画像ID(1024px),画像ID(240px)
-・予定表,画像ID(1024px),画像ID(240px)
-・テスト範囲,画像ID(1024px),画像ID(240px)
-・テスト
-            '''
+            message = \
+'''
+【@dev,】
+
+・時間割,曜日番号(1~5),変更時間:変更科目-変更時間：変更科目...
+
+・提出物,月日:内容,月日:内容...
+
+・お知らせ,月日:内容,月日:内容...
+
+・漢字,画像URL(1024px),画像URL(240px)
+
+・予定表,画像URL(1024px),画像URL(240px)
+
+・テスト範囲,画像URL(1024px),画像URL(240px)
+
+・テスト(テスト期間の切り替え)
+
+・リセット,曜日番号(全日:0/各日:1~5)
+'''
+        #時間割のリセット
+        elif message_command == 'リセット':
+            if list_num == 3:
+                if message_list[2] == '0':
+                    reset_monday_schedule()
+                    reset_tuesday_schedule()
+                    reset_wednesday_schedule()
+                    reset_thursday_schedule()
+                    reset_friday_schedule()
+                    message = '全ての曜日の時間割をリセットしました'
+                elif message_list[2] == '1':
+                    message = reset_monday_schedule()
+                elif message_list[2] == '2':
+                    message = reset_tuesday_schedule()
+                elif message_list[2] == '3':
+                    message = reset_wednesday_schedule()
+                elif message_list[2] == '4':
+                    message = reset_thursday_schedule()
+                elif message_list[2] == '5':
+                    message = reset_friday_schedule()
+                else:
+                    message = '曜日ごとにリセットする場合は1~5、全ての曜日をリセットする場合は0を入力してください'
+        
+
+        #存在しないコマンドまたは間違ったコマンドが入力された場合
+        else:
+            message = 'エラー:情報が不足しているか形式に誤りがあります'
 
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=message)
+            messages = TextSendMessage(text=message)
         )
+
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            messages = TextSendMessage(text='エラー')
+        )
+
             
 if __name__ == "__main__":
     app.run(debug=True)
 
 
+
 '''
+powershell
 $env:FLASK_ENV = "development"
 $env:FLASK_APP = "main"
+flask run
+
+cmd
+set FLASK_ENV=development
+set FLASK_APP=main
 flask run
 '''
