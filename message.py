@@ -1,228 +1,94 @@
 from linebot.models import (
-    TextSendMessage, TemplateSendMessage, MessageAction, ButtonsTemplate, ImageSendMessage
+    TextSendMessage,  ImageSendMessage
 )
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Gspread処理
+#<Gspread>
 scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
 credentials = ServiceAccountCredentials.from_json_keyfile_name('jsonファイル', scope)
 gc = gspread.authorize(credentials)
 SPREADSHEET_KEY = 'スプレッドシートID'
 worksheet = gc.open_by_key(SPREADSHEET_KEY).sheet1
 
-#時間割
+#<メイン機能>
 def schedule(weekday, now_time):
     #月曜日
     if weekday == 0:
         if now_time < 9:
-            monday = worksheet.cell(2,1).value
             message_content = TextSendMessage(
-                text=monday
+                text = worksheet.cell(2,1).value
             )
             return message_content
-        #火曜日
+    #火曜日
         else:
-            tuesday = worksheet.cell(2,2).value
             message_content = TextSendMessage(
-                text=tuesday
+                text = worksheet.cell(2,2).value
             )
             return message_content
         
     elif weekday == 1:
         if now_time < 9:
-            tuesday = worksheet.cell(2,2).value
             message_content = TextSendMessage(
-                text=tuesday
+                text = worksheet.cell(2,2).value
             )
             return message_content
-        #水曜日
+    #水曜日
         else:
-            wednesday = worksheet.cell(2,3).value
             message_content = TextSendMessage(
-                text=wednesday
+                text = worksheet.cell(2,3).value
             )
             return message_content
 
     elif weekday == 2:
         if now_time < 9:
-            wednesday = worksheet.cell(2,3).value
             message_content = TextSendMessage(
-                text=wednesday
+                text = worksheet.cell(2,3).value
             )
             return message_content
-        #木曜日
+    #木曜日
         else:
-            thursday = worksheet.cell(2,4).value
             message_content = TextSendMessage(
-                text=thursday
+                text = worksheet.cell(2,4).value
             )
             return message_content
     elif weekday == 3:
         if now_time < 9:
-            thursday = worksheet.cell(2,4).value
             message_content = TextSendMessage(
-                text=thursday
+                text = worksheet.cell(2,4).value
             )
             return message_content
-        #金曜日
+    #金曜日
         else:
-            friday = worksheet.cell(2,5).value
             message_content = TextSendMessage(
-                text=friday
+                text = worksheet.cell(2,5).value
             )
             return message_content
 
     elif weekday == 4:
         if now_time < 9:
-            friday = worksheet.cell(2,5).value
             message_content = TextSendMessage(
-                text=friday
+                text = worksheet.cell(2,5).value
             )
             return message_content
+    #月曜日
         else:
-            monday = worksheet.cell(2,1).value
             message_content = TextSendMessage(
-                text=monday
+                text = worksheet.cell(2,1).value
             )
             return message_content
 
     elif weekday == 5:
-        monday = worksheet.cell(2,1).value
         message_content = TextSendMessage(
-            text=monday
+            text = worksheet.cell(2,1).value
         )
         return message_content
 
     elif weekday == 6:
-        monday = worksheet.cell(2,1).value
         message_content = TextSendMessage(
-            text=monday
+            text = worksheet.cell(2,1).value
         )
         return message_content
-
-#範囲
-def scope():
-    message_content = TemplateSendMessage(
-        alt_text="範囲",
-        template=ButtonsTemplate(
-            title="何の範囲を確認しますか？",
-            text="定期考査の範囲表は考査1週間前に更新します",            
-            image_size="cover",
-            actions=[
-                MessageAction(
-                label='漢字テスト',
-                text='漢字テスト'
-                ),
-                MessageAction(
-                label='ブライトステージ',
-                text='ブライトステージ'
-                ),
-                MessageAction(
-                label='定期テスト',
-                text='定期テスト'
-                )
-            ]
-        )
-    )
-    return message_content
-
-#コマンド
-def change_file(message_command, list_num, message_list):
-    if message_command == '提出物':
-        base_text = '【提出物】\n'
-        for n in range(list_num-2):
-            change_file = message_list[n+2]
-            if n < list_num-3:
-                add_file = f'{change_file}\n'
-            else:
-                add_file = f'{change_file}'
-            base_text = base_text + add_file
-        worksheet.update_cell(2,7,base_text)
-
-#時間割変更
-def change_time(message_list):
-    contents = message_list[3]
-    contents = contents.split('-')
-    week = int(message_list[2])
-    now_schedule = worksheet.cell(2,week)
-    now_schedule = str(now_schedule).replace(f"<Cell R2C{week} '","").replace("'>","")
-    now_schedule = now_schedule.split('\n')
-    now_schedule = now_schedule[0].split('.')
-    for i,now in enumerate(now_schedule):
-        now = now.replace('\\n','\n')
-        now_schedule[i] = now
-    for content in contents:
-        content = content.split(':')
-        num = int(content[0])
-        subject = str(content[1])
-        next_num = num + 1            
-        now_schedule[num] = f'{subject}\n{str(next_num)}'
-    update_schedule = ''
-    for i in range(7):
-        if i == 6:
-            if '7' in now_schedule[6]:
-                now_schedule[6] = now_schedule[6].replace('\n7','')
-        update_schedule += now_schedule[i]+'.'
-    worksheet.update_cell(2,week,update_schedule)
-
-def change_kanji(list):
-    cut_list2 = list[2].replace('https://drive.google.com/file/d/','')
-    cut_list2 = cut_list2.replace('/view?usp=sharing','')
-    list2 = f'https://drive.google.com/uc?id={cut_list2}&.PNG'
-    cut_list3 = list[3].replace('https://drive.google.com/file/d/','')
-    cut_list3 = cut_list3.replace('/view?usp=sharing','')
-    list3 = f'https://drive.google.com/uc?id={cut_list3}&.PNG'
-    worksheet.update_cell(6,2,list2)
-    worksheet.update_cell(6,3,list3)
-
-def change_bright(list):
-    cut_list2 = list[2].replace('https://drive.google.com/file/d/','')
-    cut_list2 = cut_list2.replace('/view?usp=sharing','')
-    list2 = f'https://drive.google.com/uc?id={cut_list2}&.PNG'
-    cut_list3 = list[3].replace('https://drive.google.com/file/d/','')
-    cut_list3 = cut_list3.replace('/view?usp=sharing','')
-    list3 = f'https://drive.google.com/uc?id={cut_list3}&.PNG'
-    worksheet.update_cell(7,2,list2)
-    worksheet.update_cell(7,3,list3)
-
-def change_tesuto(list):
-    cut_list2 = list[2].replace('https://drive.google.com/file/d/','')
-    cut_list2 = cut_list2.replace('/view?usp=sharing','')
-    list2 = f'https://drive.google.com/uc?id={cut_list2}&.PNG'
-    cut_list3 = list[3].replace('https://drive.google.com/file/d/','')
-    cut_list3 = cut_list3.replace('/view?usp=sharing','')
-    list3 = f'https://drive.google.com/uc?id={cut_list3}&.PNG'
-    worksheet.update_cell(8,2,list2)
-    worksheet.update_cell(8,3,list3)
-
-def change_event(list):
-    cut_list2 = list[2].replace('https://drive.google.com/file/d/','')
-    cut_list2 = cut_list2.replace('/view?usp=sharing','')
-    list2 = f'https://drive.google.com/uc?id={cut_list2}&.PNG'
-    cut_list3 = list[3].replace('https://drive.google.com/file/d/','')
-    cut_list3 = cut_list3.replace('/view?usp=sharing','')
-    list3 = f'https://drive.google.com/uc?id={cut_list3}&.PNG'
-    worksheet.update_cell(10,2,list2)
-    worksheet.update_cell(10,3,list3)
-
-def change_tesuto_onoff():
-    data = str(worksheet.cell(9,2).value)
-    if data == '0':
-        worksheet.update_cell(9,2,'1')
-    elif data == '1':
-        worksheet.update_cell(9,2,'0')
-    else:
-        worksheet.update_cell(9,2,'0')
-
-def check_tesuto_onoff():
-    return str(worksheet.cell(9,2).value)
-
-
-'''
-画像のフォーマット
-https//drive.google.com/uc?id={id}&.{拡張子}
-'''
 
 def kanji():
     message_content = ImageSendMessage(
@@ -231,43 +97,146 @@ def kanji():
     )
     return message_content
 
-def brightstage():
-    message_content = ImageSendMessage(
-        original_content_url = worksheet.cell(7,2).value,
-        preview_image_url = worksheet.cell(7,3).value
-    )
-    return message_content
-
 def tesuto():
     message_content = ImageSendMessage(
-        original_content_url=worksheet.cell(8,2).value,
+        original_content_url=worksheet.cell(7,2).value,
         preview_image_url=worksheet.cell(7,2).value
     )
     return message_content
 
 def file():
-    base_text = worksheet.cell(2,7).value
     message_content = TextSendMessage(
-        text=base_text
+        text=worksheet.cell(2,7).value
     )
     return message_content
 
 def event_c():
     message_content = ImageSendMessage(
-        original_content_url=worksheet.cell(10,2).value,
-        preview_image_url=worksheet.cell(10,3).value
+        original_content_url=worksheet.cell(9,2).value,
+        preview_image_url=worksheet.cell(9,3).value
     )
     return message_content
 
-#others
-def information():
+def notice():
     message_content = TextSendMessage(
-        text='【使い方】\n 文字入力不要の『らくらくメニュー』を使って、欲しい情報をタップするだけ！\n 他に分からないことや新しい機能の要望があれば"Feedback(質問・機能追加)"をタップ'
+        text=worksheet.cell(2,8).value
     )
     return message_content
 
 def feedback():
     message_content = TextSendMessage(
-        text='3-2BOTに関する質問や新しい機能に関する要望は開発者にご連絡ください。'
+        text='3-2BOTに関する質問や新機能の要望などについてはメッセージで送信してください。'
     )
     return message_content
+
+#<コマンド>
+def change_file(list_num, message_list):
+    base_text = '【提出物】\n'
+    for n in range(list_num-2):
+        change_file = message_list[n+2]
+        if n < list_num-3:
+            add_file = f'{change_file}\n'
+        else:
+            add_file = f'{change_file}'
+        base_text = base_text + add_file
+    worksheet.update_cell(2,7,base_text)
+
+def change_notice(list_num, message_list):
+    base_text = '【お知らせ】\n'
+    for n in range(list_num-2):
+        change_file = message_list[n+2]
+        if n < list_num-3:
+            add_file = f'{change_file}\n'
+        else:
+            add_file = f'{change_file}'
+        base_text = base_text + add_file
+    worksheet.update_cell(2,8,base_text)
+
+def change_time(message_list):
+    contents = message_list[3].split('-')
+    week = int(message_list[2])
+    now_schedule = worksheet.cell(2,week).value
+    print(type(now_schedule))
+    now_schedule = now_schedule.split('\n')
+    #リストの内容を変更する時間割に修正
+    for content in contents:
+        content = content.split(':')
+        num = int(content[0])
+        subject = str(content[1])
+        now_schedule[num] = f'{str(num)}.{subject}'
+    update_schedule = ''
+    #リストを文字列に変換
+    for i in range(7):
+        if i < 6:
+            update_schedule += now_schedule[i]+'\n'
+        else:
+            update_schedule += now_schedule[i]
+    worksheet.update_cell(2,week,update_schedule)
+
+def change_kanji(list):
+    cut_list2 = list[2].replace('https://drive.google.com/file/d/','').replace('/view?usp=sharing','')
+    list2 = f'https://drive.google.com/uc?id={cut_list2}&.PNG'
+    cut_list3 = list[3].replace('https://drive.google.com/file/d/','').replace('/view?usp=sharing','')
+    list3 = f'https://drive.google.com/uc?id={cut_list3}&.PNG'
+    worksheet.update_cell(6,2,list2)
+    worksheet.update_cell(6,3,list3)
+
+def change_tesuto(list):
+    cut_list2 = list[2].replace('https://drive.google.com/file/d/','').replace('/view?usp=sharing','')
+    list2 = f'https://drive.google.com/uc?id={cut_list2}&.PNG'
+    cut_list3 = list[3].replace('https://drive.google.com/file/d/','').replace('/view?usp=sharing','')
+    list3 = f'https://drive.google.com/uc?id={cut_list3}&.PNG'
+    worksheet.update_cell(7,2,list2)
+    worksheet.update_cell(7,3,list3)
+
+def change_event(list):
+    cut_list2 = list[2].replace('https://drive.google.com/file/d/','').replace('/view?usp=sharing','')
+    list2 = f'https://drive.google.com/uc?id={cut_list2}&.PNG'
+    cut_list3 = list[3].replace('https://drive.google.com/file/d/','').replace('/view?usp=sharing','')
+    list3 = f'https://drive.google.com/uc?id={cut_list3}&.PNG'
+    worksheet.update_cell(9,2,list2)
+    worksheet.update_cell(9,3,list3)
+
+def change_tesuto_onoff():
+    data = str(worksheet.cell(8,2).value)
+    if data == '0':
+        worksheet.update_cell(8,2,'1')
+    elif data == '1':
+        worksheet.update_cell(8,2,'0')
+    else:
+        worksheet.update_cell(8,2,'0')
+
+#テスト期間かどうかを確認
+def check_tesuto_onoff():
+    return str(worksheet.cell(8,2).value)
+
+#時間割リセット
+def reset_monday_schedule():
+    reset_schedule = '【月曜日の時間割】'
+    worksheet.update_cell(2,1,reset_schedule)
+
+    return '月曜日の時間割がリセットされました'
+
+def reset_tuesday_schedule():
+    reset_schedule = '【火曜日の時間割】'
+    worksheet.update_cell(2,2,reset_schedule)
+
+    return '火曜日の時間割がリセットされました'
+
+def reset_wednesday_schedule():
+    reset_schedule = '【水曜日の時間割】'
+    worksheet.update_cell(2,3,reset_schedule)
+
+    return '水曜日の時間割がリセットされました'
+
+def reset_thursday_schedule():
+    reset_schedule = '【木曜日の時間割】'
+    worksheet.update_cell(2,4,reset_schedule)
+
+    return '木曜日の時間割がリセットされました'
+
+def reset_friday_schedule():
+    reset_schedule = '【金曜日の時間割】'
+    worksheet.update_cell(2,5,reset_schedule)
+
+    return '金曜日の時間割がリセットされました'
